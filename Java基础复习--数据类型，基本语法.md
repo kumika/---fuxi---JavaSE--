@@ -1,4 +1,4 @@
-﻿#Java基础复习 1
+﻿#Java基础复习--数据类型，基本语法
 基本的纲要
 [![](https://ae01.alicdn.com/kf/Hc3df6c7d724e4b6286ec467d0f7ea31e1.jpg)](https://ae01.alicdn.com/kf/Hc3df6c7d724e4b6286ec467d0f7ea31e1.jpg)
 
