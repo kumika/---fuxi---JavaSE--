@@ -259,10 +259,12 @@ class MyThread extends Thread {
 
 -
 
-    Thread 类的构造函数：
+    Thread 类的一些构造函数：
     1. Thread()： 分配新的 Thread 对象
     2. Thread(String name)：分配新的 Thread 对象，将指定的 name 作为其线程名称
+    3.Thread(Runnable target)：Allocates a new Thread object.（就是分配一个新的线程）
 
+Thread类的构造方法，方法，自己看Api,这里写的不够详细。
 
 创建线程代码：
 ```
@@ -453,7 +455,127 @@ this
 
 唤醒在此对象监视器上等待的 所有线程
 
+##线程的生产者消费者问题
+```
+/**
+ *
+ * 在理解线程的创建后，就可以理解这个面包线程了
+ *
+ * 重点在于理解  面包需要容器来装和执行了Runnable接口的类的构造函数，这是没有想到的。
+ *
+        1       创建生产者，消费者这2个类，都执行了Runnable接口
+        2
+ *
+ * @author : lenovo
+ * @date: 2019/09/30--9:31
+ */
+public class CuProTest {
 
+    public static void main(String[] args) {
+        //先有容器装东西
+        rongqi wan = new rongqi();
+
+        //2个类 生产者和消费者
+        Producter P = new Producter(wan);
+        Consumer C = new Consumer(wan);
+
+        Thread PT = new Thread(P);
+        Thread CT = new Thread(C);
+
+        PT.start();
+        CT.start();
+    }
+}
+/**
+
+ 支持多线程同步操作的堆栈的实现
+ */
+class rongqi {
+    //容器当前有多少个面包
+    private int index;
+    //装面包的数组，也就是真正的碗/容器
+    private char[] data = new char[9];
+
+
+    //放面包进入容器中，有判断容器的最大值
+    public  synchronized void push(char c) {
+        //当容器满了的时候，进入等待
+        if (index == data.length) {
+            try {
+                this.wait();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        //此处的提醒，是提醒拿到的线程开始工作了，因为线程等待状态才会给这个方法使用的。
+        this.notify();
+        data[index] = c;
+        index++;
+    }
+
+    //从容器中拿出面包，有判断容器的最小值
+    public synchronized char pop() {
+        //当容器里面空了的时候，进入等待
+        if (index == 0) {
+            try {
+                this.wait();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        //此处的提醒，是提醒拿到的线程开始工作了，因为线程等待状态才会给这个方法使用的。
+        this.notify();
+        index--;
+        return data[index];
+    }
+
+}
+
+class Producter implements Runnable {
+
+    rongqi wan;
+    public Producter(rongqi rq) {
+        wan = rq;
+    }
+
+    @Override
+    public void run() {
+        for (int i = 0; i < 20; i++) {
+            char c = (char) (Math.random() * 26 + 'A');
+            //把面包放入碗中
+            wan.push(c);
+            System.out.println("producted: "+c);
+            try {
+                Thread.sleep((int) (Math.random()* 1000));
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
+
+class Consumer implements Runnable {
+
+    rongqi wan;
+
+    public Consumer(rongqi rq) {
+        wan = rq;
+    }
+
+    @Override
+    public void run() {
+        for (int i = 0; i < 20; i++) {
+            char c = wan.pop();
+            System.out.println("吃了面包："+c);
+            try {
+                Thread.sleep((int) (Math.random()* 1000));
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
+```
 
 ##线程的生命周期
 
@@ -493,4 +615,7 @@ this
 参考的大体框架：
 https://zhuanlan.zhihu.com/p/39204864
 https://zhuanlan.zhihu.com/p/39788456
+
+
+https://www.cnblogs.com/xdp-gacl/p/3634382.html（生产者消费者问题）
 
