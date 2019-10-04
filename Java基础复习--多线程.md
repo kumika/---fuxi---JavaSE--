@@ -11,6 +11,11 @@
 
 **一个程序运行后至少有一个进程，一个进程中可以包含多个线程**
 
+
+个人理解线程的概念：
+**进程就是工厂里的一条生产线，
+线程就是生产线上的可以流动的工人。**
+
 在操作系统中，**进程是资源分配的基本单位，线程是调度的基本单位。**
 
     在没有出现线程之前，进程既是操作系统进行资源分配的基本单位，又是调度的基本单位
@@ -332,10 +337,20 @@ class MyRunnable implements Runnable{
 **抢占式调度**：优先让 **优先级高的** 线程使用 CPU，如果线程的优先级相同，那么会随机选择一个**(线程随机性)，Java使用的为抢占式调度**
 体现了：**程序运行的不确定性**
 
-    1. CPU 使用抢占式调度模式在多个线程间进行着高速的切换。对于CPU的一个核而言，某个时刻，只能执行一个线程，而 CPU的在多个线程间切换速度相对我们的感觉要快，看上去就是在同一时刻运行。
+    1. CPU 使用抢占式调度模式在多个线程间进行着·高速的切换。对于CPU的一个核而言，某个时刻，只能执行一个线程，而 CPU的在多个线程间切换速度相对我们的感觉要快，看上去就是在同一时刻运行。
     2. 多线程程序并不能提高程序的运行速度，但能够提高程序运行效率，让CPU的使用率更高。
 
 ##线程同步
+
+个人理解线程同步：
+
+前面比喻是  
+**线程= 工厂生产线上的工人**
+那**线程同步**就是
+**生产线上的某个步骤只能某个工人执行**
+
+同步为了防止多个线程同时访问同一个数据对象时，对数据造成破坏（就是多人做某个步骤会破坏生产机器）。
+
 **问题引入——线程安全问题**
 
 发生线程安全问题的**3个条件**
@@ -413,6 +428,80 @@ this
 **静态方法是否可以定义为同步方法？** 
 静态的同步方法， 在方法声明上加上`static synchronized` 
 它的所使用的**锁对象**是：当前类的字节码文件对象：`类名.class`
+
+ - Lock方法
+
+Java.util.concurrent.locks 中的 Lock 是一个接口，它的实现类是一个 Java 类，而不是作为语言的特性（关键字）来现 。
+
+**Lock锁实现同步的步骤**
+
+1) 创建 Lock 对象---使用**实现类ReentrantLock**
+
+2) 调用 lock()方法上锁
+
+3) 调用 unlock()方法解锁
+
+注意：如果同步代码有异常，要将 unLock() 放到 finally 中。
+
+代码：
+```
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+public class CountRunnable implements Runnable {
+	private int count = 0;
+	//创建一个Lock对象
+	Lock lock = new ReentrantLock();
+	@Override
+	public void run() {
+		for (int i = 1; i <= 10; i++) {
+			try {
+				lock.lock();//加锁
+//			synchronized (this) {
+				count++;
+				try {
+					Thread.sleep(300);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				System.out.println(Thread.currentThread().getName() + "执行操作：count=" + count);
+//			}
+			}finally {
+				//确保解锁成功放入finally语句块中
+				lock.unlock();//解锁
+			}
+		}
+	}
+}
+```
+测试类：
+```
+public class Test {
+	public static void main(String[] args) {
+		CountRunnable cr = new CountRunnable();
+		//创建代理类对象
+		Thread t1 = new Thread(cr, "A");
+		Thread t2 = new Thread(cr, "B");
+		Thread t3 = new Thread(cr, "C");
+		t1.start();
+		t2.start();
+		t3.start();
+	}
+}
+```
+
+####Lock 与 synchronized 的区别
+
+1) Lock 是显式锁 (手动开启和关闭锁 ,别忘关闭锁)，synchronized 是隐式锁
+
+2) Lock 只有代码块锁，synchronized 有代码块锁和方法锁
+
+3) 使用 Lock 锁，JVM 将花费较少的时间来调度线程，性能更好，并且具有更好的扩展性（提供更多的子类）
+
+4) Lock 确保当一个线程位于代码的临界区时，另一个线程不进入临界区。如果其他线程试图进入锁定的代码，则它将一直等待(即被阻止)，直到该对象被释放。lock()方法会对 Lock 实例对象进行加锁，因此所有对该对象调用 lock() 方法的线程都会被阻塞，直到该 Lock 对象的 unlock() 方法被调用。
+
+5) Lock可以让等待锁的线程响应中断，而synchronized却不行，使用synchronized时，等待的线程会一直等待下去，不能够响应中断；通过Lock可以知道有没有成功获取锁，而synchronized却无法办到。Lock可以提高多个线程进行读操作的效率。
+
+6) ReentrantLock可重入锁是一种递归无阻塞的同步锁机制，简单意思就是说可重入锁就是当前持有该锁的线程能够多次获取该锁，无需等待。
 
 
 
@@ -605,6 +694,64 @@ class Consumer implements Runnable {
 [![](https://ae01.alicdn.com/kf/H6535ee46d00543d5adcd228764543fb8V.png)](https://ae01.alicdn.com/kf/H6535ee46d00543d5adcd228764543fb8V.png)
 
 
+
+##线程池
+
+线程池的简单概念：
+ - **我们创建一个线程，只能使用一次**
+ - **线程池**
+其实就是一个容纳多个线程的容器，其中的线程可以 **反复使用**，省去了频繁创建线程对象的操作，无需反复创建线程而消耗过多资源
+ - **线程池的原理**
+线程池里每一个线程代码结束后，并不会死亡，而是再次回到线程池中成为空闲状态，等待下一次被使用
+
+
+为什么要使用线程池？
+答：
+**线程池主要用来解决线程生命周期开销问题和资源不足问题。**
+
+
+###使用线程池中线程对象的步骤：
+
+创建线程池对象
+创建 Runnable 接口/Callable接口 子类对象
+提交 Runnable 接口/Callable接口 子类对象
+关闭线程池
+
+代码：
+```
+public class ThreadPool {
+    public static void main(String[] args) throws ExecutionException, InterruptedException {
+        //创建一个newCachedThreadPool
+        ExecutorService executorService = Executors.newFixedThreadPool(5);
+        //操作线程池
+        //向线程池提交任务
+        executorService.submit(new Runnable() {
+            @Override
+            public void run() {
+                System.out.println("hello, thread pool");
+            }
+        });
+
+        //Callable接口的使用
+        Future<Integer> future = executorService.submit(new Callable<Integer>() {
+
+            @Override
+            public Integer call() throws Exception {
+                TimeUnit.SECONDS.sleep(3);
+                int sum = 0;
+                for (int i = 0; i < 10; i++) {
+                    sum += i;
+                }
+                return sum;
+            }
+        });
+        System.out.println(future);
+        System.out.println(future.get());
+    }
+}
+```
+
+
 #总结
 
 非常简单的不完全的一次复盘线程，出现问题之后就会进行更新。
@@ -618,4 +765,8 @@ https://zhuanlan.zhihu.com/p/39788456
 
 
 https://www.cnblogs.com/xdp-gacl/p/3634382.html（生产者消费者问题）
+
+
+
+
 
